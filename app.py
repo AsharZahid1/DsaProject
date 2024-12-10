@@ -1,5 +1,8 @@
 import streamlit as st
 
+# File to store user credentials
+DATABASE_FILE = "database.txt"
+
 # Data structures for the social network
 class User:
     def __init__(self, user_id, name, password):
@@ -16,18 +19,41 @@ class User:
 class SocialNetwork:
     def __init__(self):
         self.users = {}  # User storage: {user_id: User}
+        self.load_users()
 
-    def add_user(self, name, password):
+    def load_users(self):
+        """Load users from the database file."""
+        try:
+            with open(DATABASE_FILE, "r") as file:
+                for line in file:
+                    name, password = line.strip().split()
+                    self.add_user(name, password, from_file=True)
+        except FileNotFoundError:
+            # Create the file if it doesn't exist
+            with open(DATABASE_FILE, "w"):
+                pass
+
+    def save_user(self, name, password):
+        """Save a new user to the database file."""
+        with open(DATABASE_FILE, "a") as file:
+            file.write(f"{name} {password}\n")
+
+    def add_user(self, name, password, from_file=False):
+        """Add a new user to the network."""
         user_id = len(self.users)
         self.users[user_id] = User(user_id, name, password)
+        if not from_file:  # Avoid duplicate writing when loading from file
+            self.save_user(name, password)
 
     def find_user_by_name(self, name):
+        """Find a user by name."""
         for user in self.users.values():
             if user.name == name:
                 return user
         return None
 
     def send_friend_request(self, from_user, to_user):
+        """Send a friend request."""
         if from_user in to_user.friend_requests:
             st.warning(f"{to_user.name} has already received a request from {from_user.name}.")
             return
@@ -36,6 +62,7 @@ class SocialNetwork:
         st.success(f"Friend request sent to {to_user.name}.")
 
     def accept_friend_request(self, user, from_user):
+        """Accept a friend request."""
         user.friend_requests.remove(from_user)
         user.friends.append(from_user)
         from_user.friends.append(user)
@@ -43,6 +70,7 @@ class SocialNetwork:
         from_user.notifications.append(f"{user.name} accepted your friend request.")
 
     def create_post(self, user, content):
+        """Create a new post."""
         post = {"content": content, "likes": 0, "dislikes": 0, "author": user.name}
         user.posts.append(post)
         for friend in user.friends:
@@ -119,4 +147,3 @@ if current_user:
 
 # Footer
 st.sidebar.info("Developed as part of a Social Network Simulation Project.")
-
